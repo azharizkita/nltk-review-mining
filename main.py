@@ -3,15 +3,12 @@ import nltk,csv
 uniqueNouns = []
 dataNouns = []
 features = []
-tempDataset = []
-datatest = []
-tempDatasetSample = []
-tempDatasetSamples = []
-tempDatasetSampled = []
 uniqueSample = []
+label = []
 
 
 def parseNoun():
+    datatest = []
     with open('dataset.csv') as csvfile:
         datasets = csv.reader(csvfile, delimiter='\n')
 
@@ -22,27 +19,25 @@ def parseNoun():
             for row in datasets:
                 sentence = ''.join(row)
                 sentence = sentence.split('##')
-                tempDataset.append(sentence[0])
+                label.append(sentence[0])
                 for parseData in nltk.pos_tag(nltk.word_tokenize(sentence[1])):
                     if parseData[1] == 'NN' and parseData[0] != 'i' and parseData[0] != 's100' and parseData[0] != 'canon': #PRUNNING
                         writer.writerow({'Noun': parseData[0]})
 
-    for row in tempDataset:
+    for row in label:
         if row == '':
             pass
         else:
             datatest.append(row)
 
+    tempDatasetSample = []
     for row in datatest:
         tempParse = ''.join(row)
         tempParse = tempParse.split(',')
         tempDatasetSample.append(tempParse)
 
+    tempDatasetSampled = []
     for row in tempDatasetSample:
-        for data in row:
-            tempDatasetSamples.append(data)
-
-    for row in tempDatasetSamples:
         tempParse = ''.join(row)
         tempParse = tempParse.split('[')
         tempDatasetSampled.append(tempParse[0])
@@ -55,44 +50,55 @@ def parseNoun():
     with open('nouns.csv') as csvfile:
         nouns = csv.reader(csvfile, delimiter='\n')
         for row in nouns:
-            dataNouns.append([row[0]])
+            dataNouns.append(row[0])
             if any(row[0] in sublist for sublist in uniqueNouns):
                 pass
             else:
-                uniqueNouns.append([row[0]])         
+                uniqueNouns.append(row[0])     
+        dataNouns.pop(0)
+        uniqueNouns.pop(0)
 
 def train():
+    temp = []
     for trained in uniqueNouns:
         i = 0
         for row in dataNouns:
-            if trained[0] == row[0]:
+            if trained == row:
                 i = i + 1
-        features.append([i, trained])
-
-    features.sort(reverse=True)
+        temp.append([i, trained])
+    temp.sort(reverse=True)
     
-def accuracy(x):
-    totalFeature = 0
-    matched = 0
-    for row in features[:x]:
-        totalFeature = totalFeature + 1
-        for rows in uniqueSample:
-            if rows in row[1]:
-                matched = matched + 1
-    return [matched, totalFeature]
+    for row in temp:
+        features.append({'noun':row[1], 'count':row[0]})
+
+def precision():
+    temp = []
+    for row in label:
+        temps = []
+        tempLabel = ''.join(row)
+        tempLabel = tempLabel.split(',')
+        for rows in tempLabel:
+            tempLabels = ''.join(rows)
+            tempLabels = tempLabels.split('[')
+            temps.append(tempLabels[0])
+        temp.append(temps)
+    
+    i = 0
+    precValue = 0
+    for row in temp:
+        i = i + 1
+        matched = 0
+        for rows in row:
+            for rowss in features:
+                if (rowss['noun'] == rows):
+                    matched = matched + 1
+        precValue = (precValue + (matched / len(row)))
+    print('PRECISSION: ', precValue/3, '%')
             
 if __name__ == "__main__":
     parseNoun()
     train()
-
-    totalUniqueSample = 0
-    for row in uniqueSample:
-        totalUniqueSample = totalUniqueSample + 1
-    
-    print('total unique samples: ', totalUniqueSample)
-    finalResult = accuracy(10)
-    print(finalResult[0],' / ',finalResult[1])
-    print('Accuracy = ',(finalResult[0] / finalResult[1]) * 100, '%')
-    print('Extracted features:')
+    precision()
+    print('Top 10 features:')
     for row in features[:10]:
-        print(row)
+        print(row['noun'], '| dengan count value sebanyak: ',row['count'])
